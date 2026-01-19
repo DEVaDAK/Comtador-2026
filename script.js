@@ -37,6 +37,22 @@ function dayOfYear(date) {
   return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
 }
 
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+function getMilestoneIndices(totalDays){
+  // 0-based: 25%, 50%, 75%
+  const q1 = clamp(Math.round(totalDays * 0.25) - 1, 0, totalDays - 1);
+  const q2 = clamp(Math.round(totalDays * 0.50) - 1, 0, totalDays - 1);
+  const q3 = clamp(Math.round(totalDays * 0.75) - 1, 0, totalDays - 1);
+  return new Set([q1, q2, q3]);
+}
+
+function dayProgress01(now){
+  const midnight = new Date(now);
+  midnight.setHours(0,0,0,0);
+  return clamp((now - midnight) / 86400000, 0, 1);
+}
+
 const tooltip = document.getElementById("tooltip");
 
 function showTooltip(x, y, html) {
@@ -57,19 +73,9 @@ function hideTooltip() {
   tooltip.style.transform = "translate(-9999px, -9999px)";
 }
 
-function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
-
-function getMilestoneIndices(totalDays){
-  // índices 0-based para 1/4, 1/2, 3/4
-  const q1 = clamp(Math.floor(totalDays * 0.25) - 1, 0, totalDays - 1);
-  const q2 = clamp(Math.floor(totalDays * 0.50) - 1, 0, totalDays - 1);
-  const q3 = clamp(Math.floor(totalDays * 0.75) - 1, 0, totalDays - 1);
-  return new Set([q1, q2, q3]);
-}
-
 function render() {
   const { startDate, endDate, title } = parseParams();
-  const today = new Date();
+  const now = new Date();
 
   document.getElementById("title").innerText = title;
 
@@ -77,7 +83,7 @@ function render() {
 
   const passedDays = Math.max(
     0,
-    Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
+    Math.floor((now - startDate) / (1000 * 60 * 60 * 24))
   );
 
   const daysLeft = Math.max(0, totalDays - passedDays);
@@ -87,7 +93,7 @@ function render() {
   document.getElementById("daysLeft").innerText = `${daysLeft} días restantes`;
 
   document.getElementById("rangePill").innerText = `Del ${fmtDate(startDate)} al ${fmtDate(endDate)}`;
-  document.getElementById("dayOfYearPill").innerText = `Hoy: día #${dayOfYear(today)}`;
+  document.getElementById("dayOfYearPill").innerText = `Hoy: día #${dayOfYear(now)}`;
   document.getElementById("weeksPill").innerText = `${Math.ceil(daysLeft / 7)} semanas restantes`;
 
   const grid = document.getElementById("grid");
@@ -95,8 +101,9 @@ function render() {
 
   const milestones = getMilestoneIndices(totalDays);
 
-  // trail sutil (6 puntos previos)
-  const trailLen = 6;
+  // Progreso del día para el dot actual (0..360deg)
+  const pDay = dayProgress01(now);
+  const deg = `${Math.round(pDay * 360)}deg`;
 
   for (let i = 0; i < totalDays; i++) {
     const dot = document.createElement("div");
@@ -110,20 +117,22 @@ function render() {
     if (isFilled) dot.classList.add("filled");
     if (isCurrent) dot.classList.add("current");
 
-    // Trail (solo alrededor del current, hacia atrás)
-    if (passedDays < totalDays && i < passedDays && i >= passedDays - trailLen) {
-      const d = passedDays - i; // 1..trailLen
-      dot.classList.add(`trail-${d}`);
+    // ✅ relleno gradual durante el día en el dot actual
+    if (isCurrent){
+      dot.classList.add("todayProgress");
+      dot.style.setProperty("--p", deg);
     }
 
     // Fecha del dot
     const dateForDot = new Date(startDate);
     dateForDot.setDate(startDate.getDate() + i);
 
-    const mileTxt = isMilestone ? `<div class="muted">Hito: ${i === [...milestones][0] ? "1/4" : ""}</div>` : "";
+    let extra = "";
+    if (isMilestone) extra = " • HITO";
+
     const label = `
       <div><strong>${fmtDate(dateForDot)}</strong></div>
-      <div class="muted">Día ${i + 1} de ${totalDays}${isMilestone ? " • HITO" : ""}</div>
+      <div class="muted">Día ${i + 1} de ${totalDays}${extra}</div>
     `;
 
     dot.addEventListener("mousemove", (e) => {
@@ -160,7 +169,7 @@ function render() {
     };
   }
 
-  // Export IG (PNG 1080x1350)
+  // Export IG (PNG 1080x1350) ✅ centrado
   const exportBtn = document.getElementById("exportBtn");
   if (exportBtn) {
     exportBtn.onclick = async () => {
@@ -176,7 +185,8 @@ function render() {
           endDate,
           totalDays,
           passedDays,
-          milestones
+          milestones,
+          dayProgress: pDay
         });
 
         const a = document.createElement("a");
@@ -195,7 +205,7 @@ function render() {
   }
 }
 
-/* ---------- Export PNG (sin librerías) ---------- */
+/* ---------- Export PNG (centrado y prolijo) ---------- */
 
 function roundRect(ctx, x, y, w, h, r){
   const rr = Math.min(r, w/2, h/2);
@@ -213,7 +223,6 @@ function getCssVar(name){
 }
 
 async function buildIGImage(state){
-  // IG portrait recomendado
   const W = 1080, H = 1350;
 
   const canvas = document.createElement("canvas");
@@ -221,7 +230,6 @@ async function buildIGImage(state){
   canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  // Colores base (tomados del CSS)
   const bg1 = getCssVar("--bg1") || "#07131d";
   const bg2 = getCssVar("--bg2") || "#0e1a24";
   const fill1 = getCssVar("--fill1") || "#5bbcff";
@@ -229,7 +237,7 @@ async function buildIGImage(state){
   const ms1 = getCssVar("--milestone1") || "#ffd36a";
   const ms2 = getCssVar("--milestone2") || "#d69824";
 
-  // background gradient
+  // background
   const g = ctx.createLinearGradient(0,0,0,H);
   g.addColorStop(0, bg1);
   g.addColorStop(1, bg2);
@@ -237,20 +245,19 @@ async function buildIGImage(state){
   ctx.fillRect(0,0,W,H);
 
   // glows
-  const glowA = ctx.createRadialGradient(220,180,0, 220,180,520);
+  const glowA = ctx.createRadialGradient(240,200,0, 240,200,560);
   glowA.addColorStop(0, "rgba(91,188,255,0.18)");
   glowA.addColorStop(1, "rgba(91,188,255,0)");
   ctx.fillStyle = glowA; ctx.fillRect(0,0,W,H);
 
-  const glowB = ctx.createRadialGradient(860,120,0, 860,120,520);
+  const glowB = ctx.createRadialGradient(860,120,0, 860,120,560);
   glowB.addColorStop(0, "rgba(47,123,255,0.14)");
   glowB.addColorStop(1, "rgba(47,123,255,0)");
   ctx.fillStyle = glowB; ctx.fillRect(0,0,W,H);
 
   // card
   const cardX = 70, cardY = 120, cardW = W - 140, cardH = H - 240;
-  ctx.save();
-  ctx.globalAlpha = 0.98;
+
   ctx.fillStyle = "rgba(255,255,255,0.06)";
   roundRect(ctx, cardX, cardY, cardW, cardH, 44);
   ctx.fill();
@@ -260,38 +267,41 @@ async function buildIGImage(state){
   roundRect(ctx, cardX, cardY, cardW, cardH, 44);
   ctx.stroke();
 
-  // header text
-  ctx.fillStyle = "rgba(255,255,255,0.95)";
-  ctx.font = "900 64px Inter, system-ui, sans-serif";
-  ctx.fillText(state.title, cardX + 46, cardY + 96);
+  // header
+  ctx.fillStyle = "rgba(255,255,255,0.96)";
+  ctx.font = "900 70px Inter, system-ui, sans-serif";
+  ctx.fillText(state.title, cardX + 60, cardY + 110);
 
   ctx.fillStyle = "rgba(255,255,255,0.70)";
-  ctx.font = "800 40px Inter, system-ui, sans-serif";
+  ctx.font = "700 30px Inter, system-ui, sans-serif";
+  ctx.fillText(`Del ${fmtDate(state.startDate)} al ${fmtDate(state.endDate)}`, cardX + 60, cardY + 160);
+
+  ctx.fillStyle = "rgba(255,255,255,0.70)";
+  ctx.font = "900 44px Inter, system-ui, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText(`${state.percent}%`, cardX + cardW - 46, cardY + 92);
+  ctx.fillText(`${state.percent}%`, cardX + cardW - 60, cardY + 122);
   ctx.textAlign = "left";
 
-  // small meta
-  ctx.font = "600 28px Inter, system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.70)";
-  ctx.fillText(`Del ${fmtDate(state.startDate)} al ${fmtDate(state.endDate)}`, cardX + 46, cardY + 150);
-
-  // grid draw (simple)
+  // grid centered
   const cols = 20;
   const gap = 14;
   const dot = 20;
-
-  const gridX = cardX + 46;
-  const gridY = cardY + 210;
-  const gridW = cardW - 92;
-
   const cell = dot + gap;
   const rows = Math.ceil(state.totalDays / cols);
 
-  // auto fit: scale si no entra
+  const neededW = cols * cell - gap;
   const neededH = rows * cell - gap;
-  const maxH = cardH - 330;
-  const scale = Math.min(1, maxH / neededH);
+
+  const maxW = cardW - 120;
+  const maxH = cardH - 360;
+
+  const scale = Math.min(1, maxW / neededW, maxH / neededH);
+
+  const drawW = neededW * scale;
+  const drawH = neededH * scale;
+
+  const gridX = cardX + (cardW - drawW) / 2;
+  const gridY = cardY + 210;
 
   ctx.save();
   ctx.translate(gridX, gridY);
@@ -307,67 +317,73 @@ async function buildIGImage(state){
     const isCurrent = (i === state.passedDays && state.passedDays < state.totalDays);
     const isMilestone = state.milestones.has(i);
 
-    // base stroke
+    // base
     ctx.lineWidth = 2;
     ctx.strokeStyle = "rgba(255,255,255,0.28)";
     ctx.fillStyle = "rgba(0,0,0,0)";
 
-    // milestone base
     if (isMilestone){
       ctx.strokeStyle = "rgba(255,211,106,0.60)";
       ctx.fillStyle = "rgba(255,211,106,0.12)";
     }
 
-    // filled gradient
     if (isFilled){
       const lg = ctx.createLinearGradient(x, y, x+dot, y+dot);
-      if (isMilestone){
-        lg.addColorStop(0, ms1);
-        lg.addColorStop(1, ms2);
-      } else {
-        lg.addColorStop(0, fill1);
-        lg.addColorStop(1, fill2);
-      }
+      if (isMilestone){ lg.addColorStop(0, ms1); lg.addColorStop(1, ms2); }
+      else { lg.addColorStop(0, fill1); lg.addColorStop(1, fill2); }
       ctx.fillStyle = lg;
       ctx.strokeStyle = "rgba(255,255,255,0)";
     }
 
-    // draw circle
+    // circle
     ctx.beginPath();
     ctx.arc(x + dot/2, y + dot/2, dot/2, 0, Math.PI*2);
     ctx.fill();
     ctx.stroke();
 
-    // current glow
+    // current: ring + partial progress
     if (isCurrent){
+      // outer glow ring
       ctx.save();
       ctx.shadowColor = "rgba(91,188,255,0.55)";
       ctx.shadowBlur = 22;
       ctx.strokeStyle = "rgba(91,188,255,0.85)";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(x + dot/2, y + dot/2, dot/2 + 1, 0, Math.PI*2);
+      ctx.arc(x + dot/2, y + dot/2, dot/2 + 2, 0, Math.PI*2);
       ctx.stroke();
       ctx.restore();
+
+      // day progress arc
+      const start = -Math.PI/2;
+      const end = start + (Math.PI * 2 * state.dayProgress);
+      ctx.strokeStyle = "rgba(91,188,255,0.95)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(x + dot/2, y + dot/2, dot/2 - 1, start, end);
+      ctx.stroke();
     }
   }
 
-  ctx.restore(); // scaled grid
-  ctx.restore(); // card
+  ctx.restore();
 
-  // footer text
-  ctx.fillStyle = "rgba(255,255,255,0.78)";
-  ctx.font = "800 44px Inter, system-ui, sans-serif";
+  // footer
+  ctx.fillStyle = "rgba(255,255,255,0.80)";
+  ctx.font = "900 56px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`${state.daysLeft} días restantes`, W/2, cardY + cardH - 70);
+  ctx.fillText(`${state.daysLeft} días restantes`, W/2, cardY + cardH - 80);
   ctx.textAlign = "left";
 
   return canvas.toDataURL("image/png");
 }
 
-/* ---------- Render inicial + schedule ---------- */
+/* ---------- Updates ---------- */
 render();
 
+/* ✅ Para que el “relleno del día” se vea vivo */
+setInterval(render, 20000); // cada 20s
+
+/* actualizar igual al cambio de día (por si queda abierto) */
 function msUntilNextMidnight() {
   const now = new Date();
   const next = new Date(now);
@@ -377,7 +393,6 @@ function msUntilNextMidnight() {
 
 setTimeout(() => {
   render();
-  setInterval(render, 24 * 60 * 60 * 1000);
 }, msUntilNextMidnight());
 
 window.addEventListener("scroll", hideTooltip, { passive: true });
