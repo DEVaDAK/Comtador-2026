@@ -1,43 +1,98 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Cuenta atrás</title>
+  <meta charset="UTF-8" />
+  <title>2026 en días</title>
+
+  <!-- IMPORTANTE PARA CELULAR -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
-    body {
-      background: #0e1a24;
-      color: white;
-      font-family: Arial, sans-serif;
-      text-align: center;
+    :root{
+      --bg:#0e1a24;
+      --text:#ffffff;
+      --muted:rgba(255,255,255,.7);
+      --stroke:rgba(255,255,255,.35);
+      --fill:#4da3ff;
     }
-    .grid {
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      min-height:100vh;
+      background:var(--bg);
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      display:flex;
+      justify-content:center;
+    }
+
+    .wrap{
+      width:min(720px, 100%);
+      padding: clamp(16px, 4vw, 28px);
+      text-align:center;
+    }
+
+    h2{
+      margin: 10px 0 6px;
+      font-size: clamp(20px, 5vw, 32px);
+      font-weight: 700;
+    }
+
+    #percent{
+      margin: 0 0 14px;
+      font-size: clamp(14px, 4vw, 18px);
+      color: var(--muted);
+    }
+
+    .grid{
+      width: 100%;
+      margin: 0 auto 14px;
       display: grid;
-      grid-template-columns: repeat(20, 16px);
-      gap: 6px;
-      justify-content: center;
-      margin-top: 30px;
+      grid-template-columns: repeat(20, 1fr);
+      gap: clamp(4px, 1.2vw, 8px);
+      justify-items: center;
     }
-    .dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      border: 1px solid #ccc;
+
+    .dot{
+      width: clamp(10px, 2.8vw, 16px);
+      aspect-ratio: 1 / 1;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: transparent;
     }
-    .filled {
-      background: #4da3ff;
-      border-color: #4da3ff;
+
+    .filled{
+      background: var(--fill);
+      border-color: var(--fill);
+    }
+
+    #daysLeft{
+      margin: 0;
+      font-size: clamp(14px, 4vw, 18px);
+      color: var(--muted);
+    }
+
+    /* Más grande en celulares */
+    @media (max-width: 420px){
+      .grid{
+        grid-template-columns: repeat(14, 1fr);
+      }
     }
   </style>
 </head>
+
 <body>
+  <div class="wrap">
+    <h2>2026 en días</h2>
+    <div id="percent">0%</div>
 
-<h2>2026 en días</h2>
-<p id="percent"></p>
+    <div class="grid" id="grid"></div>
 
-<div class="grid" id="grid"></div>
+    <div id="daysLeft"></div>
+  </div>
 
-<p id="daysLeft"></p>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
