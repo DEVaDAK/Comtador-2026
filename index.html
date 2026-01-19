@@ -5,17 +5,29 @@
   <title>Progreso en días</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- Google Font (premium) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
     :root{
       --bg1:#07131d;
       --bg2:#0e1a24;
+
       --card:rgba(255,255,255,.06);
       --cardBorder:rgba(255,255,255,.12);
       --text:#ffffff;
       --muted:rgba(255,255,255,.7);
+
       --stroke:rgba(255,255,255,.28);
       --fill1:#5bbcff;
       --fill2:#2f7bff;
+
+      /* hitos (dorado) */
+      --milestone1:#ffd36a;
+      --milestone2:#d69824;
+
       --shadow: 0 20px 60px rgba(0,0,0,.45);
     }
 
@@ -25,13 +37,13 @@
     body{
       margin:0;
       color:var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 
-      /* ✅ CENTRADO REAL */
-      min-height: 100svh;          /* importante en móvil */
+      /* centrado real */
+      min-height: 100svh;
       display:flex;
       justify-content:center;
-      align-items:center;          /* <- esto te faltaba */
+      align-items:center;
       padding: 14px;
 
       background:
@@ -55,7 +67,6 @@
     .wrap{
       width:min(860px, 100%);
       padding: clamp(14px, 3.5vw, 28px);
-      margin: auto;
       position:relative;
       z-index:1;
     }
@@ -92,7 +103,7 @@
     .title{
       margin:0;
       font-size: clamp(22px, 6vw, 40px);
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing: .2px;
     }
 
@@ -100,13 +111,16 @@
       display:flex;
       align-items:center;
       gap: 10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
     }
 
     #percent{
       font-size: clamp(16px, 4.5vw, 22px);
-      font-weight: 700;
+      font-weight: 800;
       color: var(--muted);
       white-space:nowrap;
+      font-variant-numeric: tabular-nums;
     }
 
     .btn{
@@ -115,14 +129,20 @@
       color: var(--text);
       border-radius: 14px;
       padding: 10px 12px;
-      font-weight: 650;
+      font-weight: 750;
       font-size: 14px;
       cursor:pointer;
       transition: transform .15s ease, background .15s ease, border-color .15s ease;
       user-select:none;
+      white-space:nowrap;
     }
     .btn:active{ transform: scale(.98); }
     .btn:hover{ background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); }
+
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      box-shadow: 0 12px 30px rgba(0,0,0,.20);
+    }
 
     .meta{
       margin-top: 10px;
@@ -159,7 +179,7 @@
       border-radius: 999px;
       border: 1px solid var(--stroke);
       background: transparent;
-      transition: transform .12s ease, border-color .12s ease, filter .12s ease;
+      transition: transform .12s ease, border-color .12s ease, filter .12s ease, opacity .12s ease;
       position:relative;
     }
 
@@ -178,15 +198,49 @@
       100% { transform: scale(1);    filter: brightness(1); }
     }
 
+    /* ⭐ CURRENT premium glow */
     .current{
-      border-color: rgba(91,188,255,.95);
-      box-shadow: 0 0 0 6px rgba(91,188,255,.10);
-      animation: pulse 1.2s ease-in-out infinite;
+      border-color: rgba(255,255,255,.32);
+      background: rgba(255,255,255,.03);
+      box-shadow:
+        0 0 0 6px rgba(91,188,255,.10),
+        0 0 24px rgba(91,188,255,.28);
+      animation: pulse 1.25s ease-in-out infinite;
+    }
+
+    .current:after{
+      content:"";
+      position:absolute;
+      inset:-8px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, rgba(91,188,255,.28), transparent 60%);
+      filter: blur(2px);
+      opacity:.9;
+      pointer-events:none;
     }
 
     @keyframes pulse{
       0%,100% { transform: scale(1);   opacity: .95; }
       50%     { transform: scale(1.18); opacity: 1; }
+    }
+
+    /* ✨ Trail sutil: 1..6 (de más fuerte a más suave) */
+    .trail-1{ box-shadow: 0 0 0 4px rgba(91,188,255,.10), 0 0 18px rgba(91,188,255,.18); border-color: rgba(91,188,255,.40); }
+    .trail-2{ box-shadow: 0 0 0 3px rgba(91,188,255,.08), 0 0 14px rgba(91,188,255,.14); border-color: rgba(91,188,255,.34); opacity:.95; }
+    .trail-3{ box-shadow: 0 0 0 2px rgba(91,188,255,.06), 0 0 10px rgba(91,188,255,.12); border-color: rgba(91,188,255,.28); opacity:.90; }
+    .trail-4{ box-shadow: 0 0 0 1px rgba(91,188,255,.05), 0 0  8px rgba(91,188,255,.10); border-color: rgba(91,188,255,.24); opacity:.85; }
+    .trail-5{ box-shadow: 0 0 0 1px rgba(91,188,255,.04), 0 0  6px rgba(91,188,255,.08); border-color: rgba(91,188,255,.20); opacity:.80; }
+    .trail-6{ box-shadow: 0 0 0 1px rgba(91,188,255,.03), 0 0  4px rgba(91,188,255,.06); border-color: rgba(91,188,255,.18); opacity:.75; }
+
+    /* 🟡 Milestones (1/4, 1/2, 3/4) */
+    .milestone{
+      border-color: rgba(255,211,106,.55);
+      background: linear-gradient(135deg, rgba(255,211,106,.18), rgba(214,152,36,.10));
+      box-shadow: 0 0 0 1px rgba(214,152,36,.16), 0 10px 20px rgba(214,152,36,.12);
+    }
+    .milestone.filled{
+      background: linear-gradient(135deg, var(--milestone1), var(--milestone2));
+      box-shadow: 0 0 0 1px rgba(214,152,36,.18), 0 12px 26px rgba(214,152,36,.18);
     }
 
     .footer{
@@ -200,7 +254,8 @@
     #daysLeft{
       font-size: clamp(15px, 4vw, 20px);
       color: var(--muted);
-      font-weight: 650;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
     }
 
     /* Tooltip */
@@ -223,26 +278,28 @@
     }
     .tooltip .muted{ color: rgba(255,255,255,.7); font-size: 12px; margin-top: 4px; }
 
-    /* Mobile columns + layout */
+    /* Mobile columns */
     @media (max-width: 420px){
       .grid{ grid-template-columns: repeat(14, 1fr); }
-
-      /* ✅ mejor en móvil */
       .top{ align-items:flex-start; }
-      .right{ gap: 8px; }
-      .right .btn{ display:none; } /* opcional: lo mantenemos como estaba */
+      .right{ width:100%; justify-content:space-between; }
+      #percent{ order: 1; }
+      #shareBtn{ order: 2; }
+      #exportBtn{ order: 3; }
+      .btn{ flex:1; text-align:center; }
     }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <div class="card">
+    <div class="card" id="card">
       <div class="top">
         <h1 class="title" id="title">2026 en días</h1>
         <div class="right">
           <div id="percent">0%</div>
           <button class="btn" id="shareBtn">Compartir</button>
+          <button class="btn primary" id="exportBtn">Descargar imagen</button>
         </div>
       </div>
 
