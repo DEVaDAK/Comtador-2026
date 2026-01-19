@@ -40,7 +40,6 @@ function dayOfYear(date) {
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
 function getMilestoneIndices(totalDays){
-  // 0-based: 25%, 50%, 75%
   const q1 = clamp(Math.round(totalDays * 0.25) - 1, 0, totalDays - 1);
   const q2 = clamp(Math.round(totalDays * 0.50) - 1, 0, totalDays - 1);
   const q3 = clamp(Math.round(totalDays * 0.75) - 1, 0, totalDays - 1);
@@ -73,7 +72,35 @@ function hideTooltip() {
   tooltip.style.transform = "translate(-9999px, -9999px)";
 }
 
-function render() {
+/* -------------------- 🌊 Ola de carga -------------------- */
+let didWave = false;
+
+function runWaveFill(gridEl, passedDays){
+  // Solo una vez, y solo si hay algo para llenar
+  if (didWave || passedDays <= 0) return;
+  didWave = true;
+
+  const dots = Array.from(gridEl.querySelectorAll(".dot"));
+  const max = Math.min(passedDays, dots.length);
+
+  // Duración total aprox (ms) para que se vea premium
+  const totalMs = 900; // ~0.9s
+  const step = Math.max(8, Math.floor(totalMs / Math.max(1, max)));
+
+  for (let i = 0; i < max; i++) {
+    const d = dots[i];
+
+    // ya está filled por render() - solo animamos el “pintado”
+    setTimeout(() => {
+      d.classList.add("wave-fill");
+      // limpiar clase para no acumular
+      setTimeout(() => d.classList.remove("wave-fill"), 500);
+    }, i * step);
+  }
+}
+/* --------------------------------------------------------- */
+
+function render({ animateWave = false } = {}) {
   const { startDate, endDate, title } = parseParams();
   const now = new Date();
 
@@ -146,6 +173,12 @@ function render() {
     });
 
     grid.appendChild(dot);
+  }
+
+  // 🌊 correr ola SOLO cuando lo pedimos (primer render)
+  if (animateWave) {
+    // esperamos un tick para asegurar que los dots existen
+    requestAnimationFrame(() => runWaveFill(grid, passedDays));
   }
 
   // Share
@@ -237,14 +270,12 @@ async function buildIGImage(state){
   const ms1 = getCssVar("--milestone1") || "#ffd36a";
   const ms2 = getCssVar("--milestone2") || "#d69824";
 
-  // background
   const g = ctx.createLinearGradient(0,0,0,H);
   g.addColorStop(0, bg1);
   g.addColorStop(1, bg2);
   ctx.fillStyle = g;
   ctx.fillRect(0,0,W,H);
 
-  // glows
   const glowA = ctx.createRadialGradient(240,200,0, 240,200,560);
   glowA.addColorStop(0, "rgba(91,188,255,0.18)");
   glowA.addColorStop(1, "rgba(91,188,255,0)");
@@ -255,7 +286,6 @@ async function buildIGImage(state){
   glowB.addColorStop(1, "rgba(47,123,255,0)");
   ctx.fillStyle = glowB; ctx.fillRect(0,0,W,H);
 
-  // card
   const cardX = 70, cardY = 120, cardW = W - 140, cardH = H - 240;
 
   ctx.fillStyle = "rgba(255,255,255,0.06)";
@@ -267,7 +297,6 @@ async function buildIGImage(state){
   roundRect(ctx, cardX, cardY, cardW, cardH, 44);
   ctx.stroke();
 
-  // header
   ctx.fillStyle = "rgba(255,255,255,0.96)";
   ctx.font = "900 70px Inter, system-ui, sans-serif";
   ctx.fillText(state.title, cardX + 60, cardY + 110);
@@ -282,7 +311,6 @@ async function buildIGImage(state){
   ctx.fillText(`${state.percent}%`, cardX + cardW - 60, cardY + 122);
   ctx.textAlign = "left";
 
-  // grid centered
   const cols = 20;
   const gap = 14;
   const dot = 20;
@@ -317,7 +345,6 @@ async function buildIGImage(state){
     const isCurrent = (i === state.passedDays && state.passedDays < state.totalDays);
     const isMilestone = state.milestones.has(i);
 
-    // base
     ctx.lineWidth = 2;
     ctx.strokeStyle = "rgba(255,255,255,0.28)";
     ctx.fillStyle = "rgba(0,0,0,0)";
@@ -335,15 +362,12 @@ async function buildIGImage(state){
       ctx.strokeStyle = "rgba(255,255,255,0)";
     }
 
-    // circle
     ctx.beginPath();
     ctx.arc(x + dot/2, y + dot/2, dot/2, 0, Math.PI*2);
     ctx.fill();
     ctx.stroke();
 
-    // current: ring + partial progress
     if (isCurrent){
-      // outer glow ring
       ctx.save();
       ctx.shadowColor = "rgba(91,188,255,0.55)";
       ctx.shadowBlur = 22;
@@ -354,7 +378,6 @@ async function buildIGImage(state){
       ctx.stroke();
       ctx.restore();
 
-      // day progress arc
       const start = -Math.PI/2;
       const end = start + (Math.PI * 2 * state.dayProgress);
       ctx.strokeStyle = "rgba(91,188,255,0.95)";
@@ -367,7 +390,6 @@ async function buildIGImage(state){
 
   ctx.restore();
 
-  // footer
   ctx.fillStyle = "rgba(255,255,255,0.80)";
   ctx.font = "900 56px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
@@ -378,22 +400,21 @@ async function buildIGImage(state){
 }
 
 /* ---------- Updates ---------- */
-render();
 
-/* ✅ Para que el “relleno del día” se vea vivo */
-setInterval(render, 20000); // cada 20s
+// ✅ primer render con ola
+render({ animateWave: true });
 
-/* actualizar igual al cambio de día (por si queda abierto) */
+// ✅ “relleno del día” en vivo
+setInterval(() => render({ animateWave: false }), 20000);
+
+// por si cambia el día con la pestaña abierta
 function msUntilNextMidnight() {
   const now = new Date();
   const next = new Date(now);
   next.setHours(24, 0, 0, 0);
   return next - now;
 }
-
-setTimeout(() => {
-  render();
-}, msUntilNextMidnight());
+setTimeout(() => render({ animateWave: false }), msUntilNextMidnight());
 
 window.addEventListener("scroll", hideTooltip, { passive: true });
 document.addEventListener("touchstart", (e) => {
