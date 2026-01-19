@@ -26,8 +26,14 @@
       margin:0;
       color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+      /* ✅ CENTRADO REAL */
+      min-height: 100svh;          /* importante en móvil */
       display:flex;
       justify-content:center;
+      align-items:center;          /* <- esto te faltaba */
+      padding: 14px;
+
       background:
         radial-gradient(1200px 700px at 20% 10%, rgba(91,188,255,.18), transparent 60%),
         radial-gradient(900px 600px at 80% 0%, rgba(47,123,255,.14), transparent 55%),
@@ -48,7 +54,10 @@
 
     .wrap{
       width:min(860px, 100%);
-      padding: clamp(16px, 4vw, 34px);
+      padding: clamp(14px, 3.5vw, 28px);
+      margin: auto;
+      position:relative;
+      z-index:1;
     }
 
     .card{
@@ -214,10 +223,14 @@
     }
     .tooltip .muted{ color: rgba(255,255,255,.7); font-size: 12px; margin-top: 4px; }
 
-    /* Mobile columns */
+    /* Mobile columns + layout */
     @media (max-width: 420px){
       .grid{ grid-template-columns: repeat(14, 1fr); }
-      .right .btn{ display:none; } /* en móvil queda más limpio (igual share por menú del navegador) */
+
+      /* ✅ mejor en móvil */
+      .top{ align-items:flex-start; }
+      .right{ gap: 8px; }
+      .right .btn{ display:none; } /* opcional: lo mantenemos como estaba */
     }
   </style>
 </head>
