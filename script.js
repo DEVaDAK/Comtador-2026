@@ -121,6 +121,9 @@ function render() {
 
     // Tooltip touch
     dot.addEventListener("click", (e) => {
+      if (navigator.vibrate) navigator.vibrate(10);
+
+      
       showTooltip(
         e.clientX || (window.innerWidth / 2),
         e.clientY || (window.innerHeight / 2),
