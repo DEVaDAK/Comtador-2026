@@ -296,6 +296,39 @@
         gap: 10px;
       }
 
+          /* Micro-hover premium (solo desktop con mouse) */
+    @media (hover:hover) and (pointer:fine){
+      .dot{
+        transition: transform .16s cubic-bezier(.2,.8,.2,1),
+                    box-shadow .16s cubic-bezier(.2,.8,.2,1),
+                    border-color .16s cubic-bezier(.2,.8,.2,1),
+                    filter .16s cubic-bezier(.2,.8,.2,1);
+      }
+    
+      .dot:hover{
+        transform: translateY(-2px);
+        border-color: rgba(255,255,255,.55);
+        box-shadow: 0 10px 22px rgba(0,0,0,.22),
+                    0 0 0 6px rgba(91,188,255,.08);
+        filter: brightness(1.06);
+      }
+    
+      .dot.filled:hover{
+        box-shadow: 0 14px 28px rgba(0,0,0,.24),
+                    0 0 0 6px rgba(47,123,255,.10),
+                    0 0 22px rgba(47,123,255,.16);
+        filter: brightness(1.08);
+      }
+    
+      .dot.milestone:hover{
+        box-shadow: 0 14px 28px rgba(0,0,0,.24),
+                    0 0 0 6px rgba(214,152,36,.10),
+                    0 0 22px rgba(214,152,36,.14);
+        filter: brightness(1.08);
+      }
+    }
+
+
       .percentWrap{ justify-content:flex-start; }
       .actions{ justify-content:stretch; }
       .btn{ width:100%; text-align:center; padding: 12px 14px; border-radius: 16px; }
