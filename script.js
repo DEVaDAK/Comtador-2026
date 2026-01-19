@@ -1,10 +1,7 @@
 function parseParams() {
   const p = new URLSearchParams(location.search);
 
-  // year=2026
   const year = p.get("year");
-
-  // from=YYYY-MM-DD & to=YYYY-MM-DD
   const from = p.get("from");
   const to = p.get("to");
 
@@ -19,7 +16,6 @@ function parseParams() {
     endDate   = new Date(`${year}-12-31T23:59:59`);
     title = `${year} en días`;
   } else {
-    // default
     startDate = new Date("2026-01-01T00:00:00");
     endDate   = new Date("2026-12-31T23:59:59");
     title = "2026 en días";
@@ -29,7 +25,6 @@ function parseParams() {
 }
 
 function fmtDate(d) {
-  // dd/mm/yyyy
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yy = d.getFullYear();
@@ -48,14 +43,11 @@ function showTooltip(x, y, html) {
   tooltip.innerHTML = html;
   const pad = 14;
 
-  // posicionar sin salirse
   const rect = tooltip.getBoundingClientRect();
   let left = x + pad;
   let top  = y + pad;
 
-  // si se sale a la derecha, mover a la izquierda
   if (left + rect.width > window.innerWidth - 6) left = x - rect.width - pad;
-  // si se sale abajo, mover arriba
   if (top + rect.height > window.innerHeight - 6) top = y - rect.height - pad;
 
   tooltip.style.transform = `translate(${left}px, ${top}px)`;
@@ -65,15 +57,23 @@ function hideTooltip() {
   tooltip.style.transform = "translate(-9999px, -9999px)";
 }
 
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+function getMilestoneIndices(totalDays){
+  // índices 0-based para 1/4, 1/2, 3/4
+  const q1 = clamp(Math.floor(totalDays * 0.25) - 1, 0, totalDays - 1);
+  const q2 = clamp(Math.floor(totalDays * 0.50) - 1, 0, totalDays - 1);
+  const q3 = clamp(Math.floor(totalDays * 0.75) - 1, 0, totalDays - 1);
+  return new Set([q1, q2, q3]);
+}
+
 function render() {
   const { startDate, endDate, title } = parseParams();
   const today = new Date();
 
   document.getElementById("title").innerText = title;
 
-  const totalDays = Math.round(
-    (endDate - startDate) / (1000 * 60 * 60 * 24) + 1
-  );
+  const totalDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24) + 1);
 
   const passedDays = Math.max(
     0,
@@ -86,7 +86,6 @@ function render() {
   document.getElementById("percent").innerText = `${percent}%`;
   document.getElementById("daysLeft").innerText = `${daysLeft} días restantes`;
 
-  // Meta pills
   document.getElementById("rangePill").innerText = `Del ${fmtDate(startDate)} al ${fmtDate(endDate)}`;
   document.getElementById("dayOfYearPill").innerText = `Hoy: día #${dayOfYear(today)}`;
   document.getElementById("weeksPill").innerText = `${Math.ceil(daysLeft / 7)} semanas restantes`;
@@ -94,32 +93,46 @@ function render() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
 
+  const milestones = getMilestoneIndices(totalDays);
+
+  // trail sutil (6 puntos previos)
+  const trailLen = 6;
+
   for (let i = 0; i < totalDays; i++) {
     const dot = document.createElement("div");
     dot.className = "dot";
 
-    if (i < passedDays) dot.classList.add("filled");
-    if (i === passedDays && passedDays < totalDays) dot.classList.add("current");
+    const isFilled = i < passedDays;
+    const isCurrent = (i === passedDays && passedDays < totalDays);
+    const isMilestone = milestones.has(i);
+
+    if (isMilestone) dot.classList.add("milestone");
+    if (isFilled) dot.classList.add("filled");
+    if (isCurrent) dot.classList.add("current");
+
+    // Trail (solo alrededor del current, hacia atrás)
+    if (passedDays < totalDays && i < passedDays && i >= passedDays - trailLen) {
+      const d = passedDays - i; // 1..trailLen
+      dot.classList.add(`trail-${d}`);
+    }
 
     // Fecha del dot
     const dateForDot = new Date(startDate);
     dateForDot.setDate(startDate.getDate() + i);
 
+    const mileTxt = isMilestone ? `<div class="muted">Hito: ${i === [...milestones][0] ? "1/4" : ""}</div>` : "";
     const label = `
       <div><strong>${fmtDate(dateForDot)}</strong></div>
-      <div class="muted">Día ${i + 1} de ${totalDays}</div>
+      <div class="muted">Día ${i + 1} de ${totalDays}${isMilestone ? " • HITO" : ""}</div>
     `;
 
-    // Tooltip en mouse
     dot.addEventListener("mousemove", (e) => {
       showTooltip(e.clientX, e.clientY, label);
     });
     dot.addEventListener("mouseleave", hideTooltip);
 
-    // Tooltip en touch (tap)
     dot.addEventListener("click", (e) => {
       showTooltip(e.clientX || (window.innerWidth / 2), e.clientY || (window.innerHeight / 2), label);
-      // ocultar luego de 1.8s
       setTimeout(hideTooltip, 1800);
     });
 
@@ -146,12 +159,215 @@ function render() {
       } catch (_) {}
     };
   }
+
+  // Export IG (PNG 1080x1350)
+  const exportBtn = document.getElementById("exportBtn");
+  if (exportBtn) {
+    exportBtn.onclick = async () => {
+      try {
+        exportBtn.disabled = true;
+        exportBtn.textContent = "Generando...";
+
+        const png = await buildIGImage({
+          title,
+          percent,
+          daysLeft,
+          startDate,
+          endDate,
+          totalDays,
+          passedDays,
+          milestones
+        });
+
+        const a = document.createElement("a");
+        a.href = png;
+        a.download = (title || "progreso").toLowerCase().replace(/\s+/g,"-") + "-ig.png";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (e) {
+        alert("No pude generar la imagen. Probá de nuevo.");
+      } finally {
+        exportBtn.disabled = false;
+        exportBtn.textContent = "Descargar imagen";
+      }
+    };
+  }
 }
 
-// Render inicial
+/* ---------- Export PNG (sin librerías) ---------- */
+
+function roundRect(ctx, x, y, w, h, r){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+
+function getCssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+async function buildIGImage(state){
+  // IG portrait recomendado
+  const W = 1080, H = 1350;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // Colores base (tomados del CSS)
+  const bg1 = getCssVar("--bg1") || "#07131d";
+  const bg2 = getCssVar("--bg2") || "#0e1a24";
+  const fill1 = getCssVar("--fill1") || "#5bbcff";
+  const fill2 = getCssVar("--fill2") || "#2f7bff";
+  const ms1 = getCssVar("--milestone1") || "#ffd36a";
+  const ms2 = getCssVar("--milestone2") || "#d69824";
+
+  // background gradient
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, bg1);
+  g.addColorStop(1, bg2);
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+
+  // glows
+  const glowA = ctx.createRadialGradient(220,180,0, 220,180,520);
+  glowA.addColorStop(0, "rgba(91,188,255,0.18)");
+  glowA.addColorStop(1, "rgba(91,188,255,0)");
+  ctx.fillStyle = glowA; ctx.fillRect(0,0,W,H);
+
+  const glowB = ctx.createRadialGradient(860,120,0, 860,120,520);
+  glowB.addColorStop(0, "rgba(47,123,255,0.14)");
+  glowB.addColorStop(1, "rgba(47,123,255,0)");
+  ctx.fillStyle = glowB; ctx.fillRect(0,0,W,H);
+
+  // card
+  const cardX = 70, cardY = 120, cardW = W - 140, cardH = H - 240;
+  ctx.save();
+  ctx.globalAlpha = 0.98;
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  roundRect(ctx, cardX, cardY, cardW, cardH, 44);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 44);
+  ctx.stroke();
+
+  // header text
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.font = "900 64px Inter, system-ui, sans-serif";
+  ctx.fillText(state.title, cardX + 46, cardY + 96);
+
+  ctx.fillStyle = "rgba(255,255,255,0.70)";
+  ctx.font = "800 40px Inter, system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(`${state.percent}%`, cardX + cardW - 46, cardY + 92);
+  ctx.textAlign = "left";
+
+  // small meta
+  ctx.font = "600 28px Inter, system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.70)";
+  ctx.fillText(`Del ${fmtDate(state.startDate)} al ${fmtDate(state.endDate)}`, cardX + 46, cardY + 150);
+
+  // grid draw (simple)
+  const cols = 20;
+  const gap = 14;
+  const dot = 20;
+
+  const gridX = cardX + 46;
+  const gridY = cardY + 210;
+  const gridW = cardW - 92;
+
+  const cell = dot + gap;
+  const rows = Math.ceil(state.totalDays / cols);
+
+  // auto fit: scale si no entra
+  const neededH = rows * cell - gap;
+  const maxH = cardH - 330;
+  const scale = Math.min(1, maxH / neededH);
+
+  ctx.save();
+  ctx.translate(gridX, gridY);
+  ctx.scale(scale, scale);
+
+  for (let i=0;i<state.totalDays;i++){
+    const r = Math.floor(i/cols);
+    const c = i%cols;
+    const x = c * cell;
+    const y = r * cell;
+
+    const isFilled = i < state.passedDays;
+    const isCurrent = (i === state.passedDays && state.passedDays < state.totalDays);
+    const isMilestone = state.milestones.has(i);
+
+    // base stroke
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.28)";
+    ctx.fillStyle = "rgba(0,0,0,0)";
+
+    // milestone base
+    if (isMilestone){
+      ctx.strokeStyle = "rgba(255,211,106,0.60)";
+      ctx.fillStyle = "rgba(255,211,106,0.12)";
+    }
+
+    // filled gradient
+    if (isFilled){
+      const lg = ctx.createLinearGradient(x, y, x+dot, y+dot);
+      if (isMilestone){
+        lg.addColorStop(0, ms1);
+        lg.addColorStop(1, ms2);
+      } else {
+        lg.addColorStop(0, fill1);
+        lg.addColorStop(1, fill2);
+      }
+      ctx.fillStyle = lg;
+      ctx.strokeStyle = "rgba(255,255,255,0)";
+    }
+
+    // draw circle
+    ctx.beginPath();
+    ctx.arc(x + dot/2, y + dot/2, dot/2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    // current glow
+    if (isCurrent){
+      ctx.save();
+      ctx.shadowColor = "rgba(91,188,255,0.55)";
+      ctx.shadowBlur = 22;
+      ctx.strokeStyle = "rgba(91,188,255,0.85)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(x + dot/2, y + dot/2, dot/2 + 1, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  ctx.restore(); // scaled grid
+  ctx.restore(); // card
+
+  // footer text
+  ctx.fillStyle = "rgba(255,255,255,0.78)";
+  ctx.font = "800 44px Inter, system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`${state.daysLeft} días restantes`, W/2, cardY + cardH - 70);
+  ctx.textAlign = "left";
+
+  return canvas.toDataURL("image/png");
+}
+
+/* ---------- Render inicial + schedule ---------- */
 render();
 
-// Actualizar a medianoche
 function msUntilNextMidnight() {
   const now = new Date();
   const next = new Date(now);
@@ -164,7 +380,6 @@ setTimeout(() => {
   setInterval(render, 24 * 60 * 60 * 1000);
 }, msUntilNextMidnight());
 
-// Ocultar tooltip al scrollear o tocar fuera
 window.addEventListener("scroll", hideTooltip, { passive: true });
 document.addEventListener("touchstart", (e) => {
   if (!e.target.classList?.contains("dot")) hideTooltip();
