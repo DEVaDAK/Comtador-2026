@@ -46,12 +46,6 @@ function getMilestoneIndices(totalDays){
   return new Set([q1, q2, q3]);
 }
 
-function dayProgress01(now){
-  const midnight = new Date(now);
-  midnight.setHours(0,0,0,0);
-  return clamp((now - midnight) / 86400000, 0, 1);
-}
-
 const tooltip = document.getElementById("tooltip");
 
 function showTooltip(x, y, html) {
@@ -72,35 +66,7 @@ function hideTooltip() {
   tooltip.style.transform = "translate(-9999px, -9999px)";
 }
 
-/* -------------------- 🌊 Ola de carga -------------------- */
-let didWave = false;
-
-function runWaveFill(gridEl, passedDays){
-  // Solo una vez, y solo si hay algo para llenar
-  if (didWave || passedDays <= 0) return;
-  didWave = true;
-
-  const dots = Array.from(gridEl.querySelectorAll(".dot"));
-  const max = Math.min(passedDays, dots.length);
-
-  // Duración total aprox (ms) para que se vea premium
-  const totalMs = 900; // ~0.9s
-  const step = Math.max(8, Math.floor(totalMs / Math.max(1, max)));
-
-  for (let i = 0; i < max; i++) {
-    const d = dots[i];
-
-    // ya está filled por render() - solo animamos el “pintado”
-    setTimeout(() => {
-      d.classList.add("wave-fill");
-      // limpiar clase para no acumular
-      setTimeout(() => d.classList.remove("wave-fill"), 500);
-    }, i * step);
-  }
-}
-/* --------------------------------------------------------- */
-
-function render({ animateWave = false } = {}) {
+function render() {
   const { startDate, endDate, title } = parseParams();
   const now = new Date();
 
@@ -128,10 +94,6 @@ function render({ animateWave = false } = {}) {
 
   const milestones = getMilestoneIndices(totalDays);
 
-  // Progreso del día para el dot actual (0..360deg)
-  const pDay = dayProgress01(now);
-  const deg = `${Math.round(pDay * 360)}deg`;
-
   for (let i = 0; i < totalDays; i++) {
     const dot = document.createElement("div");
     dot.className = "dot";
@@ -144,41 +106,30 @@ function render({ animateWave = false } = {}) {
     if (isFilled) dot.classList.add("filled");
     if (isCurrent) dot.classList.add("current");
 
-    // ✅ relleno gradual durante el día en el dot actual
-    if (isCurrent){
-      dot.classList.add("todayProgress");
-      dot.style.setProperty("--p", deg);
-    }
-
     // Fecha del dot
     const dateForDot = new Date(startDate);
     dateForDot.setDate(startDate.getDate() + i);
 
-    let extra = "";
-    if (isMilestone) extra = " • HITO";
-
     const label = `
       <div><strong>${fmtDate(dateForDot)}</strong></div>
-      <div class="muted">Día ${i + 1} de ${totalDays}${extra}</div>
+      <div class="muted">Día ${i + 1} de ${totalDays}${isMilestone ? " • HITO" : ""}</div>
     `;
 
-    dot.addEventListener("mousemove", (e) => {
-      showTooltip(e.clientX, e.clientY, label);
-    });
+    // Tooltip mouse
+    dot.addEventListener("mousemove", (e) => showTooltip(e.clientX, e.clientY, label));
     dot.addEventListener("mouseleave", hideTooltip);
 
+    // Tooltip touch
     dot.addEventListener("click", (e) => {
-      showTooltip(e.clientX || (window.innerWidth / 2), e.clientY || (window.innerHeight / 2), label);
+      showTooltip(
+        e.clientX || (window.innerWidth / 2),
+        e.clientY || (window.innerHeight / 2),
+        label
+      );
       setTimeout(hideTooltip, 1800);
     });
 
     grid.appendChild(dot);
-  }
-
-  // 🌊 correr ola SOLO cuando lo pedimos (primer render)
-  if (animateWave) {
-    // esperamos un tick para asegurar que los dots existen
-    requestAnimationFrame(() => runWaveFill(grid, passedDays));
   }
 
   // Share
@@ -186,7 +137,7 @@ function render({ animateWave = false } = {}) {
   if (shareBtn) {
     shareBtn.onclick = async () => {
       const shareData = {
-        title: title,
+        title,
         text: `${title} — ${percent}% completado — ${daysLeft} días restantes`,
         url: location.href
       };
@@ -202,7 +153,7 @@ function render({ animateWave = false } = {}) {
     };
   }
 
-  // Export IG (PNG 1080x1350) ✅ centrado
+  // Export IG (PNG 1080x1350) centrado
   const exportBtn = document.getElementById("exportBtn");
   if (exportBtn) {
     exportBtn.onclick = async () => {
@@ -211,15 +162,9 @@ function render({ animateWave = false } = {}) {
         exportBtn.textContent = "Generando...";
 
         const png = await buildIGImage({
-          title,
-          percent,
-          daysLeft,
-          startDate,
-          endDate,
-          totalDays,
-          passedDays,
-          milestones,
-          dayProgress: pDay
+          title, percent, daysLeft,
+          startDate, endDate, totalDays, passedDays,
+          milestones
         });
 
         const a = document.createElement("a");
@@ -270,12 +215,14 @@ async function buildIGImage(state){
   const ms1 = getCssVar("--milestone1") || "#ffd36a";
   const ms2 = getCssVar("--milestone2") || "#d69824";
 
+  // background
   const g = ctx.createLinearGradient(0,0,0,H);
   g.addColorStop(0, bg1);
   g.addColorStop(1, bg2);
   ctx.fillStyle = g;
   ctx.fillRect(0,0,W,H);
 
+  // glows
   const glowA = ctx.createRadialGradient(240,200,0, 240,200,560);
   glowA.addColorStop(0, "rgba(91,188,255,0.18)");
   glowA.addColorStop(1, "rgba(91,188,255,0)");
@@ -286,6 +233,7 @@ async function buildIGImage(state){
   glowB.addColorStop(1, "rgba(47,123,255,0)");
   ctx.fillStyle = glowB; ctx.fillRect(0,0,W,H);
 
+  // card
   const cardX = 70, cardY = 120, cardW = W - 140, cardH = H - 240;
 
   ctx.fillStyle = "rgba(255,255,255,0.06)";
@@ -297,6 +245,7 @@ async function buildIGImage(state){
   roundRect(ctx, cardX, cardY, cardW, cardH, 44);
   ctx.stroke();
 
+  // header text
   ctx.fillStyle = "rgba(255,255,255,0.96)";
   ctx.font = "900 70px Inter, system-ui, sans-serif";
   ctx.fillText(state.title, cardX + 60, cardY + 110);
@@ -311,6 +260,7 @@ async function buildIGImage(state){
   ctx.fillText(`${state.percent}%`, cardX + cardW - 60, cardY + 122);
   ctx.textAlign = "left";
 
+  // grid centered
   const cols = 20;
   const gap = 14;
   const dot = 20;
@@ -345,6 +295,7 @@ async function buildIGImage(state){
     const isCurrent = (i === state.passedDays && state.passedDays < state.totalDays);
     const isMilestone = state.milestones.has(i);
 
+    // base
     ctx.lineWidth = 2;
     ctx.strokeStyle = "rgba(255,255,255,0.28)";
     ctx.fillStyle = "rgba(0,0,0,0)";
@@ -362,34 +313,29 @@ async function buildIGImage(state){
       ctx.strokeStyle = "rgba(255,255,255,0)";
     }
 
+    // circle
     ctx.beginPath();
     ctx.arc(x + dot/2, y + dot/2, dot/2, 0, Math.PI*2);
     ctx.fill();
     ctx.stroke();
 
+    // current glow ring (estático en export, apple-like)
     if (isCurrent){
       ctx.save();
-      ctx.shadowColor = "rgba(91,188,255,0.55)";
-      ctx.shadowBlur = 22;
-      ctx.strokeStyle = "rgba(91,188,255,0.85)";
+      ctx.shadowColor = "rgba(91,188,255,0.45)";
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = "rgba(91,188,255,0.80)";
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(x + dot/2, y + dot/2, dot/2 + 2, 0, Math.PI*2);
       ctx.stroke();
       ctx.restore();
-
-      const start = -Math.PI/2;
-      const end = start + (Math.PI * 2 * state.dayProgress);
-      ctx.strokeStyle = "rgba(91,188,255,0.95)";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(x + dot/2, y + dot/2, dot/2 - 1, start, end);
-      ctx.stroke();
     }
   }
 
   ctx.restore();
 
+  // footer
   ctx.fillStyle = "rgba(255,255,255,0.80)";
   ctx.font = "900 56px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
@@ -399,22 +345,21 @@ async function buildIGImage(state){
   return canvas.toDataURL("image/png");
 }
 
-/* ---------- Updates ---------- */
+/* ---------- Render inicial + schedule ---------- */
+render();
 
-// ✅ primer render con ola
-render({ animateWave: true });
-
-// ✅ “relleno del día” en vivo
-setInterval(() => render({ animateWave: false }), 20000);
-
-// por si cambia el día con la pestaña abierta
+/* Actualizar a medianoche */
 function msUntilNextMidnight() {
   const now = new Date();
   const next = new Date(now);
   next.setHours(24, 0, 0, 0);
   return next - now;
 }
-setTimeout(() => render({ animateWave: false }), msUntilNextMidnight());
+
+setTimeout(() => {
+  render();
+  setInterval(render, 24 * 60 * 60 * 1000);
+}, msUntilNextMidnight());
 
 window.addEventListener("scroll", hideTooltip, { passive: true });
 document.addEventListener("touchstart", (e) => {
