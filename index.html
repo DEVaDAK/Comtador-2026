@@ -17,14 +17,15 @@
 
       --card:rgba(255,255,255,.06);
       --cardBorder:rgba(255,255,255,.12);
+
       --text:#ffffff;
-      --muted:rgba(255,255,255,.7);
+      --muted:rgba(255,255,255,.72);
 
       --stroke:rgba(255,255,255,.28);
       --fill1:#5bbcff;
       --fill2:#2f7bff;
 
-      /* hitos (dorado) */
+      /* milestones (dorado) */
       --milestone1:#ffd36a;
       --milestone2:#d69824;
 
@@ -39,7 +40,6 @@
       color:var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 
-      /* centrado real */
       min-height: 100svh;
       display:flex;
       justify-content:center;
@@ -91,36 +91,67 @@
       pointer-events:none;
     }
 
-    .top{
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap: 12px;
+    /* ---- Header ordenado (desktop + mobile) ---- */
+    .header{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      grid-template-areas:
+        "title percent"
+        "meta  actions";
+      gap: 10px 14px;
       position:relative;
       z-index:1;
+      align-items:start;
     }
 
+    .titleWrap{ grid-area: title; }
     .title{
       margin:0;
-      font-size: clamp(22px, 6vw, 40px);
+      font-size: clamp(24px, 6vw, 44px);
       font-weight: 900;
       letter-spacing: .2px;
+      line-height: 1.05;
     }
 
-    .right{
+    .percentWrap{
+      grid-area: percent;
       display:flex;
-      align-items:center;
-      gap: 10px;
-      flex-wrap:wrap;
       justify-content:flex-end;
+      align-items:flex-start;
     }
-
     #percent{
       font-size: clamp(16px, 4.5vw, 22px);
-      font-weight: 800;
+      font-weight: 850;
       color: var(--muted);
       white-space:nowrap;
       font-variant-numeric: tabular-nums;
+      padding-top: 4px;
+    }
+
+    .meta{
+      grid-area: meta;
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .pill{
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      white-space:nowrap;
+    }
+
+    .actions{
+      grid-area: actions;
+      display:flex;
+      justify-content:flex-end;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:flex-start;
     }
 
     .btn{
@@ -129,7 +160,7 @@
       color: var(--text);
       border-radius: 14px;
       padding: 10px 12px;
-      font-weight: 750;
+      font-weight: 800;
       font-size: 14px;
       cursor:pointer;
       transition: transform .15s ease, background .15s ease, border-color .15s ease;
@@ -144,24 +175,7 @@
       box-shadow: 0 12px 30px rgba(0,0,0,.20);
     }
 
-    .meta{
-      margin-top: 10px;
-      display:flex;
-      gap: 10px;
-      flex-wrap:wrap;
-      color: var(--muted);
-      font-size: 14px;
-      position:relative;
-      z-index:1;
-    }
-    .pill{
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-    }
-
-    /* Grid */
+    /* ---- Grid ---- */
     .grid{
       width:100%;
       margin: 18px auto 12px;
@@ -183,64 +197,48 @@
       position:relative;
     }
 
-    .dot:active{ transform: scale(1.08); }
-
     .filled{
       border-color: transparent;
       background: linear-gradient(135deg, var(--fill1), var(--fill2));
       box-shadow: 0 0 0 1px rgba(47,123,255,.12), 0 10px 22px rgba(47,123,255,.18);
-      animation: pop 450ms ease-out;
     }
 
-    @keyframes pop{
-      0%   { transform: scale(0.82); filter: brightness(1); }
-      60%  { transform: scale(1.18); filter: brightness(1.25); }
-      100% { transform: scale(1);    filter: brightness(1); }
-    }
-
-    /* ⭐ CURRENT premium glow */
+    /* current con brillo premium */
     .current{
-      border-color: rgba(255,255,255,.32);
-      background: rgba(255,255,255,.03);
+      border-color: rgba(255,255,255,.28);
       box-shadow:
         0 0 0 6px rgba(91,188,255,.10),
-        0 0 24px rgba(91,188,255,.28);
-      animation: pulse 1.25s ease-in-out infinite;
+        0 0 24px rgba(91,188,255,.26);
     }
-
     .current:after{
       content:"";
       position:absolute;
       inset:-8px;
       border-radius: 999px;
-      background: radial-gradient(circle at 30% 30%, rgba(91,188,255,.28), transparent 60%);
+      background: radial-gradient(circle at 30% 30%, rgba(91,188,255,.22), transparent 60%);
       filter: blur(2px);
       opacity:.9;
       pointer-events:none;
     }
 
-    @keyframes pulse{
-      0%,100% { transform: scale(1);   opacity: .95; }
-      50%     { transform: scale(1.18); opacity: 1; }
+    /* ✅ Progreso dentro del día (animado) */
+    .todayProgress{
+      --p: 0deg; /* se setea por JS */
+      background:
+        conic-gradient(from -90deg, rgba(91,188,255,.95) var(--p), rgba(255,255,255,.04) 0),
+        radial-gradient(circle at 50% 50%, rgba(0,0,0,.14) 0 62%, transparent 63%);
+      border-color: rgba(255,255,255,.22);
     }
 
-    /* ✨ Trail sutil: 1..6 (de más fuerte a más suave) */
-    .trail-1{ box-shadow: 0 0 0 4px rgba(91,188,255,.10), 0 0 18px rgba(91,188,255,.18); border-color: rgba(91,188,255,.40); }
-    .trail-2{ box-shadow: 0 0 0 3px rgba(91,188,255,.08), 0 0 14px rgba(91,188,255,.14); border-color: rgba(91,188,255,.34); opacity:.95; }
-    .trail-3{ box-shadow: 0 0 0 2px rgba(91,188,255,.06), 0 0 10px rgba(91,188,255,.12); border-color: rgba(91,188,255,.28); opacity:.90; }
-    .trail-4{ box-shadow: 0 0 0 1px rgba(91,188,255,.05), 0 0  8px rgba(91,188,255,.10); border-color: rgba(91,188,255,.24); opacity:.85; }
-    .trail-5{ box-shadow: 0 0 0 1px rgba(91,188,255,.04), 0 0  6px rgba(91,188,255,.08); border-color: rgba(91,188,255,.20); opacity:.80; }
-    .trail-6{ box-shadow: 0 0 0 1px rgba(91,188,255,.03), 0 0  4px rgba(91,188,255,.06); border-color: rgba(91,188,255,.18); opacity:.75; }
-
-    /* 🟡 Milestones (1/4, 1/2, 3/4) */
+    /* Milestones */
     .milestone{
       border-color: rgba(255,211,106,.55);
       background: linear-gradient(135deg, rgba(255,211,106,.18), rgba(214,152,36,.10));
-      box-shadow: 0 0 0 1px rgba(214,152,36,.16), 0 10px 20px rgba(214,152,36,.12);
+      box-shadow: 0 0 0 1px rgba(214,152,36,.14), 0 10px 20px rgba(214,152,36,.10);
     }
     .milestone.filled{
       background: linear-gradient(135deg, var(--milestone1), var(--milestone2));
-      box-shadow: 0 0 0 1px rgba(214,152,36,.18), 0 12px 26px rgba(214,152,36,.18);
+      box-shadow: 0 0 0 1px rgba(214,152,36,.16), 0 12px 26px rgba(214,152,36,.16);
     }
 
     .footer{
@@ -250,11 +248,10 @@
       position:relative;
       z-index:1;
     }
-
     #daysLeft{
       font-size: clamp(15px, 4vw, 20px);
       color: var(--muted);
-      font-weight: 750;
+      font-weight: 800;
       font-variant-numeric: tabular-nums;
     }
 
@@ -278,15 +275,23 @@
     }
     .tooltip .muted{ color: rgba(255,255,255,.7); font-size: 12px; margin-top: 4px; }
 
-    /* Mobile columns */
-    @media (max-width: 420px){
+    /* Mobile */
+    @media (max-width: 560px){
       .grid{ grid-template-columns: repeat(14, 1fr); }
-      .top{ align-items:flex-start; }
-      .right{ width:100%; justify-content:space-between; }
-      #percent{ order: 1; }
-      #shareBtn{ order: 2; }
-      #exportBtn{ order: 3; }
-      .btn{ flex:1; text-align:center; }
+
+      .header{
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "title"
+          "percent"
+          "actions"
+          "meta";
+        gap: 10px;
+      }
+
+      .percentWrap{ justify-content:flex-start; }
+      .actions{ justify-content:stretch; }
+      .btn{ width:100%; text-align:center; padding: 12px 14px; border-radius: 16px; }
     }
   </style>
 </head>
@@ -294,19 +299,25 @@
 <body>
   <div class="wrap">
     <div class="card" id="card">
-      <div class="top">
-        <h1 class="title" id="title">2026 en días</h1>
-        <div class="right">
+      <div class="header">
+        <div class="titleWrap">
+          <h1 class="title" id="title">2026 en días</h1>
+        </div>
+
+        <div class="percentWrap">
           <div id="percent">0%</div>
+        </div>
+
+        <div class="meta">
+          <div class="pill" id="rangePill">Del — al —</div>
+          <div class="pill" id="dayOfYearPill">Hoy: día #—</div>
+          <div class="pill" id="weeksPill">— semanas restantes</div>
+        </div>
+
+        <div class="actions">
           <button class="btn" id="shareBtn">Compartir</button>
           <button class="btn primary" id="exportBtn">Descargar imagen</button>
         </div>
-      </div>
-
-      <div class="meta">
-        <div class="pill" id="rangePill">Del — al —</div>
-        <div class="pill" id="dayOfYearPill">Día #—</div>
-        <div class="pill" id="weeksPill">— semanas restantes</div>
       </div>
 
       <div id="grid" class="grid"></div>
